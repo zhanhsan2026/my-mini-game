@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>洛宁蒸肉制作体验</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #FFE5B4, #FFB6C1);
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: none;
+        }
+
+        .game-container.active {
+            display: block;
+        }
+
+        #quizScreen {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.95);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .game-title {
+            font-size: 22px;
+            color: #FF6B6B;
+            font-weight: bold;
+        }
+
+        .operation-tip {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #FF6B6B;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            white-space: nowrap;
+            max-width: 95%;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .materials-area {
+            position: absolute;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px;
+            width: 95%;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .material-card {
+            width: 70px;
+            height: 85px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: transform 0.1s;
+            touch-action: none;
+        }
+
+        .material-card:active {
+            transform: scale(0.95);
+        }
+
+        .material-card.dragging {
+            opacity: 0.5;
+        }
+
+        .material-card.used {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .material-emoji {
+            font-size: 28px;
+            margin-bottom: 3px;
+            pointer-events: none;
+        }
+
+        .material-name {
+            font-size: 10px;
+            color: #666;
+            pointer-events: none;
+        }
+
+        .drag-clone {
+            position: fixed;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0.9;
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            width: 70px;
+            height: 85px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cooking-area {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 50;
+            align-items: flex-end;
+        }
+
+        .cooking-area > div {
+            position: relative;
+            text-align: center;
+        }
+
+        .cooking-area .label {
+            font-size: 12px;
+            color: #333;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .pot {
+            width: 100px;
+            height: 80px;
+            background: #E0E0E0;
+            border-radius: 0 0 50px 50px;
+            border: 3px solid #9E9E9E;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 5px;
+        }
+
+        .pot:active {
+            transform: scale(0.95);
+        }
+
+        .basin {
+            width: 80px;
+            height: 60px;
+            background: #FFF8E1;
+            border-radius: 0 0 40px 40px;
+            border: 2px solid #FFD54F;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 5px;
+        }
+
+        .drop-zone {
+            width: 90%;
+            height: 85%;
+            border: 2px dashed transparent;
+            border-radius: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2px;
+            padding: 5px;
+            transition: all 0.2s;
+            pointer-events: none;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #FF6B6B;
+            background: rgba(255,107,107,0.1);
+        }
+
+        .fire {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+        }
+
+        .action-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 30px;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            display: none;
+            cursor: pointer;
+            z-index: 200;
+            font-weight: bold;
+            touch-action: manipulation;
+        }
+
+        .action-btn:active {
+            transform: translateX(-50%) scale(0.95);
+            background: #FF5252;
+        }
+
+        .action-btn.show {
+            display: block;
+        }
+
+        .quiz-container {
+            padding: 20px 15px 100px 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .quiz-question {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .question-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #333;
+            line-height: 1.4;
+            font-size: 15px;
+        }
+
+        .quiz-option {
+            padding: 12px;
+            margin: 8px 0;
+            background: #F5F5F5;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            touch-action: manipulation;
+        }
+
+        .quiz-option:active {
+            transform: scale(0.98);
+            background: #FFEBEE;
+        }
+
+        .quiz-option.selected {
+            background: #FF6B6B;
+            color: white;
+        }
+
+        .quiz-option.correct-answer {
+            background: #4CAF50 !important;
+            color: white !important;
+        }
+
+        .quiz-option.wrong-answer {
+            background: #f44336 !important;
+            color: white !important;
+        }
+
+        .reward-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .reward-card {
+            background: white;
+            padding: 30px 20px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 90%;
+        }
+
+        .btn-restart {
+            padding: 12px 30px;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            font-weight: bold;
+            touch-action: manipulation;
+        }
+
+        .btn-restart:active {
+            transform: scale(0.95);
+            background: #FF5252;
+        }
+
+        .mixing-area {
+            display: none;
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 150;
+        }
+
+        .mixing-area.show {
+            display: block;
+        }
+
+        .mixed-content {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 180px;
+        }
+
+        .quiz-result {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 0 auto 20px auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+            max-width: 600px;
+        }
+
+        .quiz-result.show {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #FF6B6B;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #F5F5F5;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .result-item.correct {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .result-item.wrong {
+            border-left: 4px solid #f44336;
+        }
+
+        .result-question {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .result-answer {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .result-correct-answer {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- 制作界面 -->
+    <div id="cookingScreen" class="game-container active">
+        <div class="header">
+            <div class="game-title">洛宁蒸肉制作体验</div>
+        </div>
+        <div class="operation-tip" id="operationTip">拖拽水和油到锅里，然后放红薯粉条</div>
+        
+        <div class="materials-area" id="materialsArea">
+            <div class="material-card" data-material="水" data-emoji="💧">
+                <div class="material-emoji">💧</div>
+                <div class="material-name">水</div>
+            </div>
+            <div class="material-card" data-material="食用油" data-emoji="🍶">
+                <div class="material-emoji">🍶</div>
+                <div class="material-name">食用油</div>
+            </div>
+            <div class="material-card" data-material="红薯粉条" data-emoji="🍜">
+                <div class="material-emoji">🍜</div>
+                <div class="material-name">红薯粉条</div>
+            </div>
+            
+            <div class="material-card" data-material="猪肉" data-emoji="🐷" style="display:none;">
+                <div class="material-emoji">🐷</div>
+                <div class="material-name">猪肉</div>
+            </div>
+            <div class="material-card" data-material="牛肉" data-emoji="🐄" style="display:none;">
+                <div class="material-emoji">🐄</div>
+                <div class="material-name">牛肉</div>
+            </div>
+            <div class="material-card" data-material="羊肉" data-emoji="🐑" style="display:none;">
+                <div class="material-emoji">🐑</div>
+                <div class="material-name">羊肉</div>
+            </div>
+            
+            <div class="material-card" data-material="玉米面" data-emoji="🌽" style="display:none;">
+                <div class="material-emoji">🌽</div>
+                <div class="material-name">玉米面</div>
+            </div>
+            <div class="material-card" data-material="白面" data-emoji="🍚" style="display:none;">
+                <div class="material-emoji">🍚</div>
+                <div class="material-name">白面</div>
+            </div>
+        </div>
+
+        <div class="cooking-area">
+            <div>
+                <div class="label">左盆</div>
+                <div class="basin" data-zone="leftZone">
+                    <div class="drop-zone" id="leftZone"></div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="label">锅</div>
+                <div class="pot" id="pot">
+                    <div class="drop-zone" id="potZone"></div>
+                    <span class="fire">🔥</span>
+                </div>
+            </div>
+            
+            <div>
+                <div class="label">右盆</div>
+                <div class="basin" data-zone="rightZone">
+                    <div class="drop-zone" id="rightZone"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mixing-area" id="mixingArea">
+            <div class="mixed-content" id="mixedContent">
+                <div style="font-size: 40px; margin-bottom: 10px;">🥣</div>
+                <div>混合搅拌中...</div>
+            </div>
+        </div>
+
+        <button class="action-btn" id="mixBtn">混合搅拌</button>
+        <button class="action-btn" id="steamBtn">开始蒸制</button>
+    </div>
+
+    <!-- 答题界面 -->
+    <div id="quizScreen" class="game-container">
+        <div class="quiz-container" id="quizContainer">
+            <div class="quiz-question" data-question="1">
+                <div class="question-title">1. 判断正误：制作蒸肉时，腌制肉片和粉条的核心调料有盐、十三香、老抽、甜面酱、蚝油</div>
+                <div class="quiz-option" data-answer="A" data-index="1" data-correct="true">A. 正确</div>
+                <div class="quiz-option" data-answer="B" data-index="1" data-correct="false">B. 错误</div>
+            </div>
+
+            <div class="quiz-question" data-question="2">
+                <div class="question-title">2. 洛宁蒸肉的核心烹饪方式是？</div>
+                <div class="quiz-option" data-answer="A" data-index="2" data-correct="false">A. 炸</div>
+                <div class="quiz-option" data-answer="B" data-index="2" data-correct="true">B. 蒸</div>
+                <div class="quiz-option" data-answer="C" data-index="2" data-correct="false">C. 炖</div>
+                <div class="quiz-option" data-answer="D" data-index="2" data-correct="false">D. 煮</div>
+            </div>
+
+            <div class="quiz-question" data-question="3">
+                <div class="question-title">3. 洛宁蒸肉被列入非物质文化遗产，最主要的价值在于？</div>
+                <div class="quiz-option" data-answer="A" data-index="3" data-correct="false">A. 食材昂贵</div>
+                <div class="quiz-option" data-answer="B" data-index="3" data-correct="false">B. 制作复杂</div>
+                <div class="quiz-option" data-answer="C" data-index="3" data-correct="true">C. 承载了地方的历史记忆、生活智慧与家族情感</div>
+                <div class="quiz-option" data-answer="D" data-index="3" data-correct="false">D. 只有少数人会做</div>
+            </div>
+
+            <button class="action-btn" id="submitQuiz" style="display: block; position: relative; bottom: auto; transform: none; margin: 20px auto;">提交答案</button>
+        </div>
+
+        <div class="quiz-result" id="quizResult">
+            <div class="result-title">📋 答题解析</div>
+            <div id="resultContent"></div>
+            <button class="btn-restart" id="nextToReward" style="margin: 20px auto; display: block;">查看奖励</button>
+        </div>
+    </div>
+
+    <!-- 奖励界面 -->
+    <div id="rewardScreen" class="game-container">
+        <div class="reward-container">
+            <div class="reward-card">
+                <div style="font-size: 60px; margin-bottom: 20px;">🎉</div>
+                <h2>制作完成！</h2>
+                <p style="margin: 20px 0; line-height: 1.8; color: #666; font-size: 14px;">
+                    古法新"蒸"，匠心传承。<br>
+                    愿这缕非遗的香气，<br>
+                    伴您的事业与生活，蒸蒸日上，热气腾腾!
+                </p>
+                <button class="btn-restart" onclick="location.reload()">再玩一次</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        let currentStep = 1;
+        let potContents = [];
+        let leftBasinContents = [];
+        let rightBasinContents = [];
+        let quizAnswers = {};
+        let selectedMeat = null;
+        
+        // 拖动状态
+        let dragState = {
+            isDragging: false,
+            draggedElement: null,
+            cloneElement: null,
+            currentX: 0,
+            currentY: 0
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initDragAndDrop();
+            initGameLogic();
+        });
+
+        // 初始化拖放 - 同时支持鼠标和触摸
+        function initDragAndDrop() {
+            const cards = document.querySelectorAll('.material-card');
+            
+            cards.forEach(card => {
+                // 鼠标事件
+                card.addEventListener('mousedown', handleDragStart);
+                // 触摸事件
+                card.addEventListener('touchstart', handleDragStart, {passive: false});
+            });
+            
+            // 全局移动和结束事件
+            window.addEventListener('mousemove', handleDragMove);
+            window.addEventListener('touchmove', handleDragMove, {passive: false});
+            window.addEventListener('mouseup', handleDragEnd);
+            window.addEventListener('touchend', handleDragEnd);
+            window.addEventListener('touchcancel', handleDragEnd);
+        }
+
+        function handleDragStart(e) {
+            const card = e.target.closest('.material-card');
+            if (!card || card.classList.contains('used')) return;
+            
+            const isTouch = e.type === 'touchstart';
+            
+            // 阻止默认行为（防止滚动、缩放、选中文本）
+            e.preventDefault();
+            
+            const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+            const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+            
+            dragState.isDragging = true;
+            dragState.draggedElement = card;
+            dragState.currentX = clientX;
+            dragState.currentY = clientY;
+            
+            // 创建克隆元素
+            const rect = card.getBoundingClientRect();
+            const clone = card.cloneNode(true);
+            clone.classList.add('drag-clone');
+            clone.style.left = rect.left + 'px';
+            clone.style.top = rect.top + 'px';
+            
+            document.body.appendChild(clone);
+            dragState.cloneElement = clone;
+            
+            card.classList.add('dragging');
+            
+            // 震动反馈
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+
+        function handleDragMove(e) {
+            if (!dragState.isDragging) return;
+            
+            const isTouch = e.type === 'touchmove';
+            
+            // 阻止默认行为（防止滚动）
+            e.preventDefault();
+            
+            const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+            const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+            
+            dragState.currentX = clientX;
+            dragState.currentY = clientY;
+            
+            const clone = dragState.cloneElement;
+            if (clone) {
+                clone.style.left = (clientX - clone.offsetWidth / 2) + 'px';
+                clone.style.top = (clientY - clone.offsetHeight / 2) + 'px';
+            }
+            
+            checkHoverZone(clientX, clientY);
+        }
+
+        function handleDragEnd(e) {
+            if (!dragState.isDragging) return;
+            
+            const card = dragState.draggedElement;
+            const clone = dragState.cloneElement;
+            const material = card.dataset.material;
+            const emoji = card.dataset.emoji;
+            
+            // 检测放置位置
+            const dropZone = getDropZone(dragState.currentX, dragState.currentY);
+            
+            if (dropZone) {
+                handleDrop(material, emoji, dropZone);
+                
+                if (navigator.vibrate) {
+                    navigator.vibrate([50, 50]);
+                }
+            }
+            
+            // 清理
+            if (clone) clone.remove();
+            if (card) card.classList.remove('dragging');
+            
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('drag-over');
+            });
+            
+            dragState = {
+                isDragging: false,
+                draggedElement: null,
+                cloneElement: null,
+                currentX: 0,
+                currentY: 0
+            };
+        }
+
+        function checkHoverZone(x, y) {
+            const zones = ['potZone', 'leftZone', 'rightZone'];
+            
+            zones.forEach(zoneId => {
+                const zone = document.getElementById(zoneId);
+                const rect = zone.getBoundingClientRect();
+                
+                if (x >= rect.left && x <= rect.right && 
+                    y >= rect.top && y <= rect.bottom) {
+                    zone.classList.add('drag-over');
+                } else {
+                    zone.classList.remove('drag-over');
+                }
+            });
+        }
+
+        function getDropZone(x, y) {
+            const zones = ['potZone', 'leftZone', 'rightZone'];
+            
+            for (let zoneId of zones) {
+                const zone = document.getElementById(zoneId);
+                const rect = zone.getBoundingClientRect();
+                const padding = 20;
+                
+                if (x >= rect.left - padding && x <= rect.right + padding && 
+                    y >= rect.top - padding && y <= rect.bottom + padding) {
+                    return zoneId;
+                }
+            }
+            return null;
+        }
+
+        function handleDrop(material, emoji, zoneId) {
+            if (currentStep === 1 && zoneId === 'potZone' && 
+                ['水', '食用油', '红薯粉条'].includes(material) && !potContents.includes(material)) {
+                potContents.push(material);
+                markMaterialUsed(material);
+                addEmojiToZone(zoneId, emoji);
+                checkStep1Complete();
+            }
+            else if (currentStep === 2 && zoneId === 'rightZone' && 
+                     ['猪肉', '牛肉', '羊肉'].includes(material) && !selectedMeat) {
+                selectedMeat = material;
+                rightBasinContents.push(material);
+                markMaterialUsed(material);
+                addEmojiToZone(zoneId, emoji);
+                ['猪肉', '牛肉', '羊肉'].forEach(m => {
+                    if (m !== material) {
+                        document.querySelector(`[data-material="${m}"]`).classList.add('used');
+                    }
+                });
+                ['玉米面', '白面'].forEach(m => {
+                    document.querySelector(`[data-material="${m}"]`).style.display = 'flex';
+                });
+                currentStep = 3;
+                updateTip('拖拽玉米面和白面到右盆');
+            }
+            else if (currentStep === 3 && zoneId === 'rightZone' && 
+                     ['玉米面', '白面'].includes(material) && !rightBasinContents.includes(material)) {
+                rightBasinContents.push(material);
+                markMaterialUsed(material);
+                addEmojiToZone(zoneId, emoji);
+                if (rightBasinContents.length === 3) {
+                    currentStep = 4;
+                    updateTip('两个盆的材料准备完成！点击混合按钮！');
+                    document.getElementById('mixBtn').style.display = 'block';
+                }
+            }
+        }
+
+        function markMaterialUsed(material) {
+            const card = document.querySelector(`[data-material="${material}"]`);
+            if (card) card.classList.add('used');
+        }
+
+        function addEmojiToZone(zoneId, emoji) {
+            const div = document.createElement('div');
+            div.textContent = emoji;
+            div.style.fontSize = '20px';
+            div.style.lineHeight = '1';
+            document.getElementById(zoneId).appendChild(div);
+        }
+
+        function updateTip(text) {
+            document.getElementById('operationTip').textContent = text;
+        }
+
+        function checkStep1Complete() {
+            if (potContents.length === 3) {
+                currentStep = 1.5;
+                updateTip('材料已齐全，点击锅开始煮粉条！');
+            }
+        }
+
+        // 初始化游戏逻辑
+        function initGameLogic() {
+            // 按钮点击事件 - 使用 click 事件，它在触摸设备上会自动触发
+            document.getElementById('pot').addEventListener('click', handlePotClick);
+            document.getElementById('mixBtn').addEventListener('click', handleMix);
+            document.getElementById('steamBtn').addEventListener('click', handleSteam);
+            document.getElementById('submitQuiz').addEventListener('click', submitQuiz);
+            document.getElementById('nextToReward').addEventListener('click', goToReward);
+
+            // 答题选项
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    if (document.getElementById('quizResult').classList.contains('show')) return;
+                    
+                    const questionIndex = this.dataset.index;
+                    const answer = this.dataset.answer;
+                    
+                    document.querySelectorAll(`.quiz-option[data-index="${questionIndex}"]`).forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    this.classList.add('selected');
+                    quizAnswers[questionIndex] = answer;
+                });
+            });
+        }
+
+        function handlePotClick() {
+            if (currentStep !== 1.5) return;
+            
+            updateTip('煮粉条中...');
+            currentStep = 1.6;
+            
+            setTimeout(() => {
+                document.getElementById('potZone').innerHTML = '';
+                addEmojiToZone('leftZone', '🍜');
+                leftBasinContents.push('红薯粉条');
+                
+                ['猪肉', '牛肉', '羊肉'].forEach(m => {
+                    document.querySelector(`[data-material="${m}"]`).style.display = 'flex';
+                });
+                
+                currentStep = 2;
+                updateTip('拖拽一种肉类到右盆（猪肉/牛肉/羊肉三选一）');
+            }, 2000);
+        }
+
+        function handleMix() {
+            if (currentStep !== 4) return;
+            
+            document.getElementById('mixBtn').style.display = 'none';
+            document.querySelector('.cooking-area').style.display = 'none';
+            document.getElementById('mixingArea').style.display = 'block';
+            
+            const mixedContent = document.getElementById('mixedContent');
+            let mixEmojis = '';
+            
+            leftBasinContents.forEach(item => {
+                if (item === '红薯粉条') mixEmojis += '🍜';
+            });
+            rightBasinContents.forEach(item => {
+                if (item === '猪肉') mixEmojis += '🐷';
+                else if (item === '牛肉') mixEmojis += '🐄';
+                else if (item === '羊肉') mixEmojis += '🐑';
+                else if (item === '玉米面') mixEmojis += '🌽';
+                else if (item === '白面') mixEmojis += '🍚';
+            });
+            
+            mixedContent.innerHTML = `
+                <div style="font-size: 40px; margin-bottom: 10px;">${mixEmojis}</div>
+                <div>正在混合搅拌...</div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                    左盆粉条 + 右盆${selectedMeat}和面粉
+                </div>
+            `;
+            
+            updateTip('混合搅拌完成！');
+            
+            setTimeout(() => {
+                updateTip('准备蒸制，点击开始！');
+                document.getElementById('steamBtn').style.display = 'block';
+                currentStep = 5;
+            }, 2000);
+        }
+
+        function handleSteam() {
+            if (currentStep !== 5) return;
+            
+            document.getElementById('mixingArea').innerHTML = `
+                <div class="mixed-content">
+                    <div style="font-size: 50px;">♨️</div>
+                    <div>蒸制中，请稍候...</div>
+                </div>
+            `;
+            updateTip('蒸制需要60分钟...');
+            
+            setTimeout(() => {
+                document.getElementById('cookingScreen').classList.remove('active');
+                document.getElementById('quizScreen').classList.add('active');
+            }, 6000);
+        }
+
+        // 正确答案配置
+        const correctAnswers = {
+            1: 'A',
+            2: 'B',
+            3: 'C'
+        };
+
+        const answerExplanations = {
+            1: '制作蒸肉时，确实需要盐、十三香、老抽、甜面酱、蚝油等调料来腌制肉片和粉条，这些调料能够让蒸肉更加入味。',
+            2: '洛宁蒸肉的核心烹饪方式是"蒸"，这也是它名字的由来。通过蒸汽加热，能够最大程度保留食材的营养和口感。',
+            3: '洛宁蒸肉作为非物质文化遗产，最重要的价值在于它承载了洛宁地区的历史记忆、生活智慧与家族情感，是当地文化的重要组成部分。'
+        };
+
+        function submitQuiz() {
+            if (Object.keys(quizAnswers).length < 3) {
+                alert('请回答所有3道题目！');
+                return;
+            }
+
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+
+            document.getElementById('submitQuiz').style.display = 'none';
+
+            const resultContent = document.getElementById('resultContent');
+            let correctCount = 0;
+            let resultHTML = '';
+
+            for (let i = 1; i <= 3; i++) {
+                const userAnswer = quizAnswers[i];
+                const correctAnswer = correctAnswers[i];
+                const isCorrect = userAnswer === correctAnswer;
+                
+                if (isCorrect) correctCount++;
+
+                const questionTitle = document.querySelector(`[data-question="${i}"] .question-title`).textContent;
+                
+                resultHTML += `
+                    <div class="result-item ${isCorrect ? 'correct' : 'wrong'}">
+                        <div class="result-question">${questionTitle}</div>
+                        <div class="result-answer">
+                            您的答案：${userAnswer} ${isCorrect ? '✓' : '✗'}<br>
+                            <span class="result-correct-answer">正确答案：${correctAnswer}</span><br>
+                            <span style="color: #666; font-size: 13px; margin-top: 5px; display: block;">${answerExplanations[i]}</span>
+                        </div>
+                    </div>
+                `;
+
+                document.querySelectorAll(`.quiz-option[data-index="${i}"]`).forEach(opt => {
+                    const optAnswer = opt.dataset.answer;
+                    if (optAnswer === correctAnswer) {
+                        opt.classList.add('correct-answer');
+                    } else if (optAnswer === userAnswer && !isCorrect) {
+                        opt.classList.add('wrong-answer');
+                    }
+                });
+            }
+
+            resultHTML = `<div style="text-align: center; margin-bottom: 15px; font-size: 18px; font-weight: bold; color: ${correctCount === 3 ? '#4CAF50' : '#FF6B6B'};">答对 ${correctCount}/3 题</div>` + resultHTML;
+            
+            resultContent.innerHTML = resultHTML;
+            document.getElementById('quizResult').style.display = 'block';
+            
+            if (navigator.vibrate && correctCount === 3) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        function goToReward() {
+            document.getElementById('quizScreen').classList.remove('active');
+            document.getElementById('rewardScreen').classList.add('active');
+        }
+    </script>
+</body>
+</html>
